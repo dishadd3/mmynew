@@ -1,19 +1,21 @@
 from omnidimension import Client
 import json
 
-# Initialize client with your API key
-client = Client("bS6P1NUUGvWu8Nwtxha_OxQD5rhHSQAdqzUDftbx-Ho")
+# WARNING: Do NOT commit API keys to version control. Load from env vars in real usage.
+API_KEY = "wtgRExrOd4LSBtzYjGacfqRMy9Q13f5UL2sHEtLUQFA"
+client = Client(API_KEY)
 
-# Create an agent
-response = client.agent.create(
-    name="Roommate Compatibility Assistant",
-    welcome_message="""
+try:
+    # Create an agent
+    response = client.agent.create(
+        name="Roommate Compatibility Assistant",
+        welcome_message="""
 Let’s begin! First, could you please tell me your **age**? That will help me choose the right set of questions for you.
 """,
-    context_breakdown=[
-        {
-            "title": "questions",
-            "body": """ According to each age group I am providing you with 5 questions and ask them one by one from the user and wait for the response . When the user answers the question you should start the next question with "let's move on to the next one!" and then ask the question.
+        context_breakdown=[
+            {
+                "title": "questions",
+                "body": """ According to each age group I am providing you with 5 questions and ask them one by one from the user and wait for the response . When the user answers the question you should start the next question with "let's move on to the next one!" and then ask the question.
 
 Here is the question list:
 
@@ -112,13 +114,12 @@ Prompt:
 How important is it for your roommate to respect your work-life balance (e.g., no loud noise during late-night calls)?
 (0 = doesn’t matter, 10 = extremely important)
 Trait: workLifeRespect
-"""
-            ,
-            "is_enabled": True
-        },
-        {
-            "title": "Traits Extraction",
-            "body": """ You are an AI personality assistant. Your goal is to analyze the user’s answers to lifestyle questions and assign them trait scores (0.00–10.00) based on a defined knowledge base. Focus on key traits such as cleanliness, sociability, conflict tolerance, and lifestyle preferences.
+""",
+                "is_enabled": True
+            },
+            {
+                "title": "Traits Extraction",
+                "body": """ You are an AI personality assistant. Your goal is to analyze the user’s answers to lifestyle questions and assign them trait scores (0.00–10.00) based on a defined knowledge base. Focus on key traits such as cleanliness, sociability, conflict tolerance, and lifestyle preferences.
 
 For each user response:
 
@@ -134,47 +135,46 @@ If the response is out of context or ambiguous, respond with:
 
 After providing the trait score and brief explanation, always follow up with:
 
-“If you'd like to add more or adjust your response, you can use the slider below. Otherwise, click Next to move on to the next question.”
-""",
-            "is_enabled": True
+“If you'd like to add more or adjust your response, you can use the slider below. Otherwise, click Next to move on to the next question.”""",
+                "is_enabled": True
+            },
+            {
+                "title": "Confirmation and Closing",
+                "body": """ Confirm the extracted information with the user and offer further assistance if needed and also show the vector of the numerical values created according to the keywords by user response. Close the conversation politely. """,
+                "is_enabled": True
+            }
+        ],
+        call_type="Incoming",
+        transcriber={
+            "provider": "deepgram_stream",
+            "silence_timeout_ms": 400,
+            "model": "nova-3",
+            "numerals": True,
+            "punctuate": True,
+            "smart_format": True,
+            "diarize": False
         },
-        {
-            "title": "Confirmation and Closing",
-            "body": """ Confirm the extracted information with the user and offer further assistance if needed and also show the vector of the numerical values created according to the keywords by user response. Close the conversation politely. """,
-            "is_enabled": True
-        }
-    ],
-    call_type="Incoming",
-    transcriber={
-        "provider": "deepgram_stream",
-        "silence_timeout_ms": 400,
-        "model": "nova-3",
-        "numerals": True,
-        "punctuate": True,
-        "smart_format": True,
-        "diarize": False
-    },
-    model={
-        "model": "azure-gpt-4o-mini",
-        "temperature": 0.7
-    },
-    voice={
-        "provider": "eleven_labs",
-        "voice_id": "cgSgspJ2msm6clMCkdW9"
-    },
-    web_search={
-        "enabled": True,
-        "provider": "openAI"
-    },
-    post_call_actions={
-        "webhook": {
+        model={
+            "model": "azure-gpt-4o-mini",
+            "temperature": 0.7
+        },
+        voice={
+            "provider": "eleven_labs",
+            "voice_id": "cgSgspJ2msm6clMCkdW9"
+        },
+        web_search={
             "enabled": True,
-            "url": "http://localhost:8080/api/users/omnidim-data?userId=688951986c93608cb0ed357f&traits=5,6,3,4,9",
-            "include": ["summary", "sentiment", "extracted_variables"],
-            "extracted_variables": [
-                {
-                    "key": "personality_embedding",
-                    "prompt": """The decimal numbers extracted from each question must be returned in the form of a vector. Here is the demo:
+            "provider": "openAI"
+        },
+        post_call_actions={
+            "webhook": {
+                "enabled": True,
+                "url": "https://393a01ba2605.ngrok-free.app/api/users/omnidim-data",
+                "include": ["summary", "sentiment", "extracted_variables"],
+                "extracted_variables": [
+                    {
+                        "key": "personality_embedding",
+                        "prompt": """The decimal numbers extracted from each question must be returned in the form of a vector. Here is the demo:
 {
   "call_id": 24877,
   "user_email": "user@example.com",
@@ -184,17 +184,27 @@ After providing the trait score and brief explanation, always follow up with:
     }
   }
 }"""
-                }
-            ]
-        }
-    },
-)
+                    }
+                ]
+            }
+        },
+    )
 
-# Print the response in a readable format
-print(json.dumps(response, indent=2, default=str))
+    # Pretty-print the agent creation response
+    print("Agent creation response:")
+    print(json.dumps(response, indent=2, default=str))
 
-session = client.call.dispatch_call(agent_id=8538, to_number="+918295459359")
-import json
-print(json.dumps(session, indent=2, default=str))
+    # Extract agent ID correctly from the dict
+    agent_id = None
+    if isinstance(response, dict) and "json" in response and "id" in response["json"]:
+        agent_id = response["json"]["id"]
+    else:
+        raise ValueError("Unexpected response format, cannot find agent ID.")
 
+    # Dispatch the call using the extracted agent ID
+    session = client.call.dispatch_call(agent_id=agent_id, to_number="+919319883231")
+    print("Dispatch call session:")
+    print(json.dumps(session, indent=2, default=str))
 
+except Exception as e:
+    print(f"Error occurred: {e}")

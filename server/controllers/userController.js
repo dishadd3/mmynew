@@ -2,6 +2,8 @@ const User = require('../models/User');
 
 exports.handleOmnidimWebhook = async (req, res) => {
   try {
+    console.log(req.body);
+    
     const { call_id, user_email, call_report } = req.body;
 
     if (!user_email || !call_report || !call_report.extracted_variables) {
