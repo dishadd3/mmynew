@@ -28,19 +28,29 @@ exports.loginUser = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // ✅ Trigger the Python script
+    
     const python = spawn('python3', ['scripts/create_agent.py', user.phone, user.email]);
 
+    let output = '';
+    let errorOutput = '';
+
+    // Collect stdout data
     python.stdout.on('data', (data) => {
-      console.log(`Omnidim stdout: ${data}`);
+      output += data.toString();
     });
 
+    // Collect stderr data
     python.stderr.on('data', (data) => {
-      console.error(`Omnidim stderr: ${data}`);
+      errorOutput += data.toString();
     });
 
+    // When script closes, log output and errors
     python.on('close', (code) => {
       console.log(`Omnidim script exited with code ${code}`);
+      console.log('Omnidim stdout:', output);
+      if (errorOutput) {
+        console.error('Omnidim stderr:', errorOutput);
+      }
     });
 
     return res.status(200).json({
