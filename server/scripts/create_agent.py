@@ -2,7 +2,7 @@ from omnidimension import Client
 import json
 
 # WARNING: Do NOT commit API keys to version control. Load from env vars in real usage.
-API_KEY = "wtgRExrOd4LSBtzYjGacfqRMy9Q13f5UL2sHEtLUQFA"
+API_KEY = "yvQeIyMuVrmb7LAeylBGkS4DUzM-xnKP7XdMAjh00xY"
 client = Client(API_KEY)
 
 try:
