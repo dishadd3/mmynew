@@ -169,7 +169,7 @@ After providing the trait score and brief explanation, always follow up with:
     post_call_actions={
         "webhook": {
             "enabled": True,
-            "url": "http://localhost:8080/api/users/omnidim-data?userId=688951986c93608cb0ed357f&traits=5,6,3,4,9",
+            "url": "https://mmynew.onrender.com/api/users/omnidim-data",
             "include": ["summary", "sentiment", "extracted_variables"],
             "extracted_variables": [
                 {
