@@ -28,30 +28,20 @@ exports.loginUser = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    
-    const python = spawn('python3', ['scripts/create_agent.py', user.phone, user.email]);
-
-    let output = '';
-    let errorOutput = '';
-
-    // Collect stdout data
-    python.stdout.on('data', (data) => {
-      output += data.toString();
-    });
-
-    // Collect stderr data
-    python.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-    });
-
-    // When script closes, log output and errors
-    python.on('close', (code) => {
-      console.log(`Omnidim script exited with code ${code}`);
-      console.log('Omnidim stdout:', output);
-      if (errorOutput) {
-        console.error('Omnidim stderr:', errorOutput);
-      }
-    });
+    // Call FastAPI agent creation endpoint instead of spawning Python script
+    const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+    try {
+      const fastApiUrl = 'http://localhost:8000/create-agent';
+      const response = await fetch(fastApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to_number: user.phone })
+      });
+      const fastApiResult = await response.json();
+      console.log('FastAPI agent response:', fastApiResult);
+    } catch (err) {
+      console.error('Error calling FastAPI agent:', err);
+    }
 
     return res.status(200).json({
       message: 'Login successful, Omnidim agent triggered',
