@@ -2,7 +2,7 @@ from omnidimension import Client
 import json
 
 # Initialize client with your API key
-client = Client("IZOuAuRC0VrKmV8Cm944hgE0MQXDutMB85Ab1DnTO1A")
+client = Client("bS6P1NUUGvWu8Nwtxha_OxQD5rhHSQAdqzUDftbx-Ho")
 
 # Create an agent
 response = client.agent.create(
