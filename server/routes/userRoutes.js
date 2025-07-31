@@ -1,7 +1,7 @@
 const express = require('express');
-const { receiveOmnidimData } = require('../controllers/userController');
 const router = express.Router();
+const { handleOmnidimWebhook } = require('../controllers/userController');
 
-router.post('/omnidim-data', receiveOmnidimData);
+router.post('/users/omnidim-data', handleOmnidimWebhook);
 
 module.exports = router;
