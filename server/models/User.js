@@ -14,7 +14,7 @@ const traitSubSchema = new mongoose.Schema({
     max: 10,
   },
   embedding: {
-    type: [Number],  // array of numbers (embedding vector)
+    type: [Number], // array of numbers
     required: true,
   }
 }, { _id: false });
@@ -34,6 +34,11 @@ const userSchema = new mongoose.Schema({
     trim: true,
   },
 
+  phone: {
+    type: String,
+    trim: true,
+  },
+
   age: {
     type: Number,
     required: true,
@@ -47,24 +52,36 @@ const userSchema = new mongoose.Schema({
   },
 
   traits: {
-  type: [Number], // Array of numbers
-  required: true,
-}
+    type: Map,
+    of: traitSubSchema,
+    default: {},
+    required: true,
+  },
 
+  sentiment: String,
+  personalitySummary: String,
+  callRecordingUrl: String,
+  callId: Number,
+
+  interactions: [
+    {
+      sequence: Number,
+      user_query: String,
+      bot_response: String,
+      time: String
+    }
+  ]
 
 }, { timestamps: true });
 
-// Validation pre-save hook
-userSchema.pre('save', function(next) {
+
+
+userSchema.pre('save', function (next) {
   if (!this.ageGroup) {
     return next(new Error('ageGroup is required'));
   }
 
   const validTraits = allowedTraits[this.ageGroup];
-  if (!validTraits) {
-    return next(new Error(`Invalid ageGroup: ${this.ageGroup}`));
-  }
-
   const traitsKeys = Array.from(this.traits.keys());
   const invalidTraits = traitsKeys.filter(t => !validTraits.includes(t));
 
@@ -72,17 +89,21 @@ userSchema.pre('save', function(next) {
     return next(new Error(`Invalid traits for age group ${this.ageGroup}: ${invalidTraits.join(', ')}`));
   }
 
-  for (const [key, value] of this.traits.entries()) {
-    if (typeof value.score !== 'number' || value.score < 0 || value.score > 10) {
-      return next(new Error(`Trait score for ${key} must be a number between 0 and 10`));
+  for (const [key, traitObj] of this.traits.entries()) {
+    if (typeof traitObj.score !== 'number' || traitObj.score < 0 || traitObj.score > 10) {
+      return next(new Error(`Trait score for "${key}" must be a number between 0 and 10`));
     }
 
-    if (!Array.isArray(value.embedding) || value.embedding.some(x => typeof x !== 'number')) {
-      return next(new Error(`Trait embedding for ${key} must be an array of numbers`));
+    if (
+      !Array.isArray(traitObj.embedding) ||
+      traitObj.embedding.some(val => typeof val !== 'number')
+    ) {
+      return next(new Error(`Trait embedding for "${key}" must be an array of numbers`));
     }
   }
 
   next();
 });
+
 
 module.exports = mongoose.model('User', userSchema);

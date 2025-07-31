@@ -1,64 +1,42 @@
 const User = require('../models/User');
 
-const createUserFromOmnidim = async (req, res) => {
+const receiveOmnidimData = async (req, res) => {
   try {
-    const { userId } = req.query;
-    const embeddingStr = req.body?.call_report?.extracted_variables?.personality_embedding;
+    const {
+      call_id,
+      user_email,
+      phone_number,
+      call_report
+    } = req.body;
 
-    if (!userId || !embeddingStr) {
-      return res.status(400).json({
-        success: false,
-        error: 'userId and personality_embedding are required.'
-      });
-    }
+    const { summary, sentiment, extracted_variables, interactions, recording_url } = call_report;
+    const traitsArray = JSON.parse(extracted_variables.personality_embedding || "[]");
 
-    // Parse embedding string: "[2, 4, 2, 3, 2]" => [2, 4, 2, 3, 2]
-    let embedding;
-    try {
-      embedding = JSON.parse(embeddingStr);
-    } catch (err) {
-      return res.status(400).json({ success: false, error: 'Invalid embedding format' });
-    }
-
-    if (!Array.isArray(embedding) || embedding.length !== 5) {
-      return res.status(400).json({ success: false, error: 'Expected 5 trait scores in embedding' });
-    }
-
-    // Get user to access ageGroup
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-
-    const traitKeysByGroup = {
-      '16-18': ['sleepDiscipline', 'cleanliness', 'studyStyle', 'emotionalSupport', 'streamAffinity'],
-      '18-25': ['cleanliness', 'noiseTolerance', 'guestComfort', 'itemSharing', 'emotionalSharing'],
-      '25+': ['socialPreference', 'scheduleTolerance', 'partyOpenness', 'cleanliness', 'workLifeRespect'],
-    };
-
-    const traitKeys = traitKeysByGroup[user.ageGroup];
-    if (!traitKeys) {
-      return res.status(400).json({ success: false, error: `Invalid or missing ageGroup for user` });
-    }
-
-    // Map trait scores to structured object (score + dummy embedding)
-    const traits = {};
-    traitKeys.forEach((key, i) => {
-      traits[key] = {
-        score: embedding[i],
-        embedding: [embedding[i]] // You can replace this with real vector data if you have it
-      };
+    const user = await User.findOne({
+      $or: [
+        { email: user_email },
+        { phone: phone_number }
+      ]
     });
 
-    user.traits = traits;
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found with given phone or email' });
+    }
+
+    user.traits = traitsArray;
+    user.personalitySummary = summary;
+    user.sentiment = sentiment;
+    user.callRecordingUrl = recording_url;
+    user.callId = call_id;
+    user.interactions = interactions;
+
     await user.save();
 
-    return res.status(200).json({ success: true, user });
-
-  } catch (error) {
-    console.error('[ERROR in createUserFromOmnidim]', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(200).json({ success: true, message: 'User updated with Omnidim data' });
+  } catch (err) {
+    console.error('[ERROR: receiveOmnidimData]', err.message);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
-module.exports = { createUserFromOmnidim };
+module.exports = { receiveOmnidimData };
